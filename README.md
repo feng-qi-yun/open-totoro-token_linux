@@ -2,16 +2,10 @@
 
 [open-totoro-token](https://github.com/SSSSSea6/open-totoro-token) 的 **Linux 移植 fork**：
 上游脚本只用 Win32 调试 API，只能在 Windows 上跑；这个 fork 增加了 Linux 版
-`memory_scanner_linux.py`，用 `/proc` 接口做同一件事，并保留上游的 Windows 脚本。
+`memory_scanner_linux.py`，用 `/proc` 接口做同一件事
 
 一个纯本地、零依赖的命令行小工具：从「龙猫体育锻炼」微信小程序**自己已经登录的进程**里读出
 登录 token，打印出来给你复制。不联网、不上传、不提交任何东西。
-
-| 平台 | 脚本 | 说明 |
-| --- | --- | --- |
-| Linux | `memory_scanner_linux.py` | 本 fork 新增，实测可用（需 root，见下方「权限」） |
-| Windows | `memory_scanner.py` | 继承自上游，未改动 |
-
 ## 快速开始（Linux）
 
 ```bash
@@ -64,9 +58,6 @@ Windows 上是 `WeChatAppEx.exe`，Linux 版微信自带同一套运行时，宿
 全程只读，不写内存、不注入代码、不 hook，也不涉及破解或绕过任何加密——token 本身就是明文
 存在的，这里只是把它读出来。
 
-## 运行环境
-
-**Linux**
 
 - 官方 deb 版微信（`/opt/wechat`，自带 `RadiumWMPF/runtime/WeChatAppEx` 小程序运行时）
 - Python 3.7+（只用标准库，`pip install` 什么都不用装）
@@ -76,11 +67,6 @@ Windows 上是 `WeChatAppEx.exe`，Linux 版微信自带同一套运行时，宿
 - 可选：`xdotool`（装了就能像 Windows 版那样先按窗口标题定位，没装则直接扫所有
   `WeChatAppEx` 进程）；`wl-copy` / `xclip` / `xsel`（装了才能自动复制到剪贴板）
 
-**Windows**（继承自上游）
-
-- Windows
-- Python 3.7+（只用标准库）
-- 微信桌面客户端，且已经打开并登录了「龙猫体育锻炼」小程序（工具只读它自己的进程，不会帮你登录）
 
 ## 使用
 
@@ -94,12 +80,6 @@ sudo python3 memory_scanner_linux.py
 
 失败会打印原因：没找到小程序进程、没读到 token（比如没登录），或者权限不足——权限不足时脚本
 会直接给出可照做的处理办法。
-
-### Windows（继承自上游）
-
-```bash
-python memory_scanner.py
-```
 
 ## 两个平台的实现对应关系
 
@@ -153,8 +133,3 @@ MIT，见 [LICENSE](LICENSE)。上游项目同许可证，版权与署名归
 [SSSSSea6/open-totoro-token](https://github.com/SSSSSea6/open-totoro-token) 原作者；本 fork
 的改动同样以 MIT 发布。
 
-## 上游推广信息（原文保留）
-
-> #广告  nuaa.win   ，可实现扫码一键式跑步
-
-（这行来自上游 README，非本 fork 的推广信息。）
