@@ -1,16 +1,46 @@
-# open-totoro-token
+# open-totoro-token_linux
 
-#广告  nuaa.win   ，可实现扫码一键式跑步
+[open-totoro-token](https://github.com/SSSSSea6/open-totoro-token) 的 **Linux 移植 fork**：
+上游脚本只用 Win32 调试 API，只能在 Windows 上跑；这个 fork 增加了 Linux 版
+`memory_scanner_linux.py`，用 `/proc` 接口做同一件事，并保留上游的 Windows 脚本。
 
 一个纯本地、零依赖的命令行小工具：从「龙猫体育锻炼」微信小程序**自己已经登录的进程**里读出
 登录 token，打印出来给你复制。不联网、不上传、不提交任何东西。
 
-支持 Windows 和 Linux 两个平台：
+| 平台 | 脚本 | 说明 |
+| --- | --- | --- |
+| Linux | `memory_scanner_linux.py` | 本 fork 新增，实测可用（需 root，见下方「权限」） |
+| Windows | `memory_scanner.py` | 继承自上游，未改动 |
 
-| 平台 | 脚本 |
-| --- | --- |
-| Windows | `memory_scanner.py` |
-| Linux | `memory_scanner_linux.py` |
+## 快速开始（Linux）
+
+```bash
+git clone git@github.com:feng-qi-yun/open-totoro-token_linux.git
+cd open-totoro-token_linux
+
+# 1) 先在微信里打开并登录「龙猫体育锻炼」小程序
+# 2) 再跑（读别的进程内存需要 ptrace 权限，所以要 sudo）：
+sudo python3 memory_scanner_linux.py
+```
+
+成功会打印 token 并尝试复制到剪贴板：
+
+```
+正在扫描本机的龙猫体育锻炼小程序进程...
+
+Token:
+WXXCX........（约 100 字符）
+
+已复制到剪贴板，可以直接粘贴使用。
+```
+
+不需要 sudo 的自检（不必打开小程序，验证本机扫描链路是否正常）：
+
+```bash
+python3 memory_scanner_linux.py --selftest
+```
+
+其它选项：`--list`（只列出候选进程）、`--pid N`（只扫指定进程，便于排查）、`--verbose`。
 
 ## 原理
 
@@ -36,48 +66,40 @@ Windows 上是 `WeChatAppEx.exe`，Linux 版微信自带同一套运行时，宿
 
 ## 运行环境
 
-**Windows**
-
-- Windows
-- Python 3.7+（只用标准库，`pip install` 什么都不用装）
-- 微信桌面客户端，且已经打开并登录了「龙猫体育锻炼」小程序（工具只读它自己的进程，不会帮你登录）
-
 **Linux**
 
 - 官方 deb 版微信（`/opt/wechat`，自带 `RadiumWMPF/runtime/WeChatAppEx` 小程序运行时）
-- Python 3.7+（同样只用标准库）
+- Python 3.7+（只用标准库，`pip install` 什么都不用装）
 - **需要 root**：Linux 上读 `/proc/<pid>/mem` 属于 ptrace 操作，在启用 Yama 限制的发行版上
   （`/proc/sys/kernel/yama/ptrace_scope = 1`，Ubuntu/Debian/Fedora 默认）只有 root 能读别的
   进程的内存，所以要用 `sudo` 运行（原因见下方「权限」）
 - 可选：`xdotool`（装了就能像 Windows 版那样先按窗口标题定位，没装则直接扫所有
   `WeChatAppEx` 进程）；`wl-copy` / `xclip` / `xsel`（装了才能自动复制到剪贴板）
 
+**Windows**（继承自上游）
+
+- Windows
+- Python 3.7+（只用标准库）
+- 微信桌面客户端，且已经打开并登录了「龙猫体育锻炼」小程序（工具只读它自己的进程，不会帮你登录）
+
 ## 使用
 
-### Windows
-
-先在微信里打开并登录「龙猫体育锻炼」小程序，再跑这一行：
-
-```bash
-python memory_scanner.py
-```
-
 ### Linux
+
+先在微信里打开并登录「龙猫体育锻炼」小程序，再跑：
 
 ```bash
 sudo python3 memory_scanner_linux.py
 ```
 
-不想用 sudo 的自检（不需要小程序、也不需要 root，验证扫描链路是否正常）：
+失败会打印原因：没找到小程序进程、没读到 token（比如没登录），或者权限不足——权限不足时脚本
+会直接给出可照做的处理办法。
+
+### Windows（继承自上游）
 
 ```bash
-python3 memory_scanner_linux.py --selftest
+python memory_scanner.py
 ```
-
-其它选项：`--list`（只列出候选进程）、`--pid N`（只扫指定进程，便于排查）、`--verbose`。
-
-成功会把 token 打印在终端里、并尝试自动复制到剪贴板；失败会打印原因（比如还没打开小程序，
-或者权限不足并给出解决办法）。
 
 ## 两个平台的实现对应关系
 
@@ -104,24 +126,35 @@ Windows 上「同一用户会话下能打开自己的进程」就够，Linux 不
 `WeChatAppEx` 在独立的 PID 命名空间里，外面完全看不到，只能改用官方 deb 包或从命名空间内部
 运行本脚本。
 
-## 已知差异
+## 本 fork 相对上游的差异
 
-- Linux 版修掉了原版一个跨块读取的隐患：原版按 1MB 分块、块间重叠 4KB 读取，当一个 token
-  正好跨块、且前半段已 ≥80 字符时，被截断的半截串会先被当成命中（`tokens[0]` 于是可能返回
-  一个错的 token）。Linux 版改成把「末尾未闭合的连续 base64 串」留到下一块拼接后再判定，
-  只输出完整 token；同时把上限收紧到 `TOKEN_MAX_LEN`（4096），避免把大段 base64 噪声当成
-  token。这一点同样值得回补到 Windows 版。
+- 新增 Linux 实现（进程发现 / 内存扫描 / 剪贴板全部换成 Linux 原生接口），Windows 脚本原样保留。
+- 修掉了上游一个跨块读取的隐患：上游按 1MB 分块、块间重叠 4KB 读取，当一个 token 正好跨块、
+  且前半段已 ≥80 字符时，被截断的半截串会先被当成命中，而 `extract_token()` 返回的是
+  `tokens[0]`，于是可能返回一个**错的 token**。Linux 版改成把「末尾未闭合的连续 base64 串」
+  留到下一块拼接后再判定，只输出完整 token；同时加上 `TOKEN_MAX_LEN`（4096）上限，避免把
+  大段 base64 噪声当成 token。这段逻辑与平台无关，**同样建议回补到上游的
+  `memory_scanner.py`**。
 - Linux 版的进程路径匹配同时接受「可执行文件名是 `WeChatAppEx`」和「路径以
   `RadiumWMPF/runtime/WeChatAppEx` 结尾」两种形式，微信改目录或改进程名时更耐升级。
 
 ## 验证情况
 
+- 真机跑通：微信 Linux 版 4.1.13.23（官方 deb）+ `sudo python3 memory_scanner_linux.py`，
+  成功从 `WeChatAppEx` 进程内存中取出真实 token 并自动复制到剪贴板。
 - `python3 memory_scanner_linux.py --selftest`：通过（自检会在子进程里放一个伪造 token，
   再走完整的 maps 解析 + 分块扫描 + token 匹配链路把它读回来）。
 - 进程发现 + 内存扫描端到端：用一个进程名同为 `WeChatAppEx` 的测试程序验证通过。
-- 已在微信 Linux 版 4.1.13.23（官方 deb）上确认存在 `RadiumWMPF/runtime/WeChatAppEx`
-  小程序运行时；真实小程序的 token 提取需要你在本机登录小程序后实测（详见下方权限说明）。
+- 跨块/长度阈值/去重的 12 个边界用例：全部通过。
 
 ## 许可证
 
-MIT，见 [LICENSE](LICENSE)。
+MIT，见 [LICENSE](LICENSE)。上游项目同许可证，版权与署名归
+[SSSSSea6/open-totoro-token](https://github.com/SSSSSea6/open-totoro-token) 原作者；本 fork
+的改动同样以 MIT 发布。
+
+## 上游推广信息（原文保留）
+
+> #广告  nuaa.win   ，可实现扫码一键式跑步
+
+（这行来自上游 README，非本 fork 的推广信息。）
